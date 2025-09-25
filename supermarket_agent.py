@@ -26,8 +26,9 @@ dashscope_api_key = os.getenv("dashscope_api_key")
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 # 创建必要的目录
-SAVED_FILES_DIR = "saved_files"
-METADATA_FILE = "file_metadata.json"
+SAVED_FILES_DIR = "./data_backup/saved_files"
+METADATA_FILE = "./data_backup/file_metadata.json"
+DB_FILE = "./data_backup/db"
 os.makedirs(SAVED_FILES_DIR, exist_ok=True)
 
 # 页面配置
@@ -179,7 +180,8 @@ def check_saved_databases():
     
     for filename, info in metadata.items():
         db_name = info.get("db_name", "")
-        if os.path.exists(db_name) and os.path.exists(f"{db_name}/index.faiss"):
+        db_path = os.path.join(DB_FILE, db_name)
+        if os.path.exists(db_path) and os.path.exists(f"{db_path}/index.faiss"):
             saved_dbs.append({
                 "filename": filename,
                 "original_name": info["original_name"],
@@ -236,10 +238,12 @@ def get_chunks(text):
 def vector_store(text_chunks, db_name="faiss_db"):
     embeddings = init_embeddings()
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local(db_name)
+    db_path = os.path.join(DB_FILE, db_name)
+    vector_store.save_local(db_path)
 
 def check_database_exists(db_name="faiss_db"):
-    return os.path.exists(db_name) and os.path.exists(f"{db_name}/index.faiss")
+    db_path = os.path.join(DB_FILE, db_name)
+    return os.path.exists(db_path) and os.path.exists(f"{db_path}/index.faiss")
 
 def get_pdf_response(user_question):
     if not check_database_exists("faiss_db"):
@@ -307,7 +311,9 @@ def get_supermarket_response(user_question, db_name="supermarket_db"):
         embeddings = init_embeddings()
         llm = init_llm()
         
-        new_db = FAISS.load_local(db_name, embeddings, allow_dangerous_deserialization=True)
+        db_path = os.path.join(DB_FILE, db_name)
+
+        new_db = FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
         retriever = new_db.as_retriever(search_kwargs={"k": 5})
         
         prompt = ChatPromptTemplate.from_messages([
@@ -734,8 +740,9 @@ def main():
                             try:
                                 import shutil
                                 # 删除数据库目录
-                                if os.path.exists(db_info['db_name']):
-                                    shutil.rmtree(db_info['db_name'])
+                                db_path = os.path.join(DB_FILE, db_info['db_name'])
+                                if os.path.exists(db_path):
+                                    shutil.rmtree(db_path)
                                 
                                 # 删除原文件
                                 if os.path.exists(db_info['file_path']):
@@ -784,8 +791,9 @@ def main():
                     import shutil
                     # 删除所有商品数据库
                     for db_info in saved_dbs:
-                        if os.path.exists(db_info['db_name']):
-                            shutil.rmtree(db_info['db_name'])
+                        db_path = os.path.join(DB_FILE, db_info['db_name'])
+                        if os.path.exists(db_path):
+                            shutil.rmtree(db_path)
                         if os.path.exists(db_info['file_path']):
                             os.remove(db_info['file_path'])
                     
