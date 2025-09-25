@@ -1,58 +1,72 @@
-# Supermarket_Agent
+## Supermarket_Agent
 
-功能介绍：
-1.挂载RAG数据库的超市AIAgent智能客服，实现与客户的智能交互，方便客户询问商品信息（折扣、库存、品牌、位置、保质期等），理解用户的模糊需求并做相关推荐例如：“我想为新装修好的厨房增添厨具”，AIAgent能给顾客推荐相关产品，列举出商品的详细信息，并可以反复对话帮助用户确定所需要的商品。支持csv和PDF的数据导入。
-2.支持端到端生成并执行python代码进行数据分析的Agent。超市管理员可传入商品信息，提出需求，可以实现自动数据分析、生成数据图表。支持csv数据导入
-3.支持向量数据库的管理，上传的数据会进行哈希计算查看是否已存在，如果是新传入的数据，则会永久保存文件和embedding后的向量数据库。支持预览、删除、切换多个文件的向量数据库。
+一个基于 RAG 的超市智能助手，集「PDF 问答」「CSV 数据分析」「超市客服检索与推荐」「数据与向量库管理」于一体，快速部署使用。
 
-项目开始：
-第一步：pip install -r requirements.txt
-第二步：获取LLM和embedding的API，填写在.env文件下的“DEEPSEEK_API_KEY=”和“DASHSCOPE_API_KEY=”的后面
-本项目使用的是deepseek的LLM服务和阿里的dashscope的embedding服务
-获取deepseek API：https://platform.deepseek.com/usage
-获取Dashscope API:https://bailian.console.aliyun.com/?tab=model#/api-key
-第三步：
-在python环境所在的终端运行streamlit run supermarket_agent.py
+### 主要特性
+1. 智能客服（RAG）：挂载商品向量数据库，支持多轮对话，回答折扣、库存、品牌、位置、保质期等问题，理解模糊需求并给出相关推荐。支持 CSV、PDF 数据导入。
+2. 数据分析 Agent：可端到端生成并执行 Python 代码进行分析与可视化，适合超市管理员对商品数据进行探索与报表制作。
+3. 持久化向量库与文件管理：对上传数据进行哈希去重，新数据自动构建向量库并长期保存；支持预览、删除、快速切换多个数据库。
 
-页面展示：
-采用streamlit实现前端交互
-页面引用photo文件夹内图片
+### 安装与运行
+1. 安装依赖
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. 配置环境变量（编辑项目根目录下的 `.env`文件）
+   ```env
+   DEEPSEEK_API_KEY=你的deepseek密钥
+   DASHSCOPE_API_KEY=你的dashscope密钥
+   ```
+   - 本项目默认使用 deepseek 提供的 LLM 与阿里 DashScope 的 Embedding 服务。
+   - 获取 deepseek API: `https://platform.deepseek.com/usage`
+   - 获取 DashScope API: `https://bailian.console.aliyun.com/?tab=model#/api-key`
+3. 启动应用
+   ```bash
+   streamlit run supermarket_agent.py
+   ```
 
-代码版本迭代：
-v1：基础功能实现
-v1.1：修复点击快速询问按钮后，无法实现询问-回复的效果
-v1.1.1： 特别版本，实现本地embedding模型（后续仍采用DashScope云embedding模型）
-v1.2 实现向量数据库的永久存储和管理，利用哈希编码判断是否需要进行向量化，减少重复数据的向量化需求
-v1.3 优化向量数据库的文件管理，所有数据存储在data_backup文件夹下，上传的csv存储在data_backup/saved_files。向量数据库存储在data_backup/db下，存储的数据以时间戳分别命名
+### 页面预览
+采用 Streamlit 实现前端交互。以下为主要页面截图：
 
-实验数据说明：
-原始实验数据下载地址：https://gitee.com/EricLiuCN/barcode
+![智能超市客服界面](./photo/智能超市客服界面.png)
 
-预处理后数据,历代数据更新存储在：data目录下
-data/barcodes_v1:去除不必要列，清洗brand列为空的值，数据量14135，9列
+![数据分析页面](./photo/数据分析页面.png)
 
-data/barcodes_v2:测试数据，随机抽取barcodes_v1中的数据，数据量1414，9列
+![数据管理页面](./photo/数据管理页面.png)
 
-data/barcodes_v3_admission.csv：在data/barcodes_v1基础上进行更新
-1.清洗brand列不正常的值，例如"-"，
-2.将price列由object类别更新为float类型，加快Agent查询效率
-3.新增列discount,inventory,expiration_data,product_location
-均为随机生成，用于测似，其中
-    discount：有10%商品为0.9，5%为0.8，1%为0.7，其余均为1
-    inventory: 范围20-50
-    expiration: 范围范围2026年9月1日-2027年9月30日
-    product_location: 在ABCDEFGH这8个区
-数据量14065行，13列
-！！！此数据文件包含信息更多，推荐用于超市管理员的Agent数据分析功能
+### 目录结构摘要
+- `data/`：示例与处理后的数据集
+- `data_backup/`：持久化存储区（上传文件与向量数据库）
+  - `data_backup/saved_files/`：保存原始上传的 CSV 文件
+  - `data_backup/db/`：保存对应的向量数据库（按时间戳命名）
+- `history/`：历史版本脚本
+- `photo/`：项目截图
+- `supermarket_agent.py`：主应用入口
 
-data/barcodes_v3_customer.csv：在data/barcodes_v3_admission.csv基础上进行更新
-去除barcode,supplier,madein三种列，对于超市顾客来说此类信息几乎并不影响体验，极大提升Agent的运行效率，主要用于搭建面向超市顾客地RAG数据库
+### 数据集与说明
+- 原始实验数据下载地址：`https://gitee.com/EricLiuCN/barcode`
 
-co-worker:
-1.余子轩
+- 处理后数据均位于 `data/` 目录下：
+  - `data/barcodes_v1.csv`：去除不必要列，清洗 `brand` 为空的值；数据量 14135，9 列。
+  - `data/barcodes_v2.csv`：测试数据，从 v1 中随机抽取；数据量 1414，9 列。
+  - `data/barcodes_v3_admission.csv`：在 v1 基础上更新：
+    1) 清洗 `brand` 中不正常值（如 "-"）
+    2) 将 `price` 由 object 转为 float，提高查询效率
+    3) 新增列 `discount`、`inventory`、`expiration`、`product_location`（均为随机生成，用于测试）
+       - discount：10% 为 0.9，5% 为 0.8，1% 为 0.7，其余为 1
+       - inventory：20-50
+       - expiration：2026-09-01 至 2027-09-30
+       - product_location：A-H 区域
+    数据量 14065 行，13 列。
+    - 推荐用于管理员侧的数据分析功能。
+  - `data/barcodes_v3_customer.csv`：在 admission 版基础上移除 `barcode`、`supplier`、`madein` 三列，更贴近顾客检索体验，适用于构建面向顾客的 RAG 数据库。
 
+### 版本记录
+- v1：基础功能实现
+- v1.1：修复「快速询问按钮」导致的询问-回复异常
+- v1.1.1：特别版本，尝试本地 Embedding（正式版仍采用 DashScope 云端 Embedding）
+- v1.2：向量库持久化与哈希去重，减少重复向量化
+- v1.3：统一数据管理至 `data_backup/`，CSV 于 `data_backup/saved_files/`，向量库于 `data_backup/db/`，按时间戳命名
 
-
-
-
-
+### 致谢（Co-worker）
+- 余子轩
