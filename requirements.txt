@@ -1,0 +1,11 @@
+streamlit
+pandas
+PyPDF2
+langchain
+langchain-core
+langchain-community
+langchain-experimental
+matplotlib
+python-dotenv
+faiss-cpu
+dashscope
