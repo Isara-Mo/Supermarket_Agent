@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
+import json
+import hashlib
+from datetime import datetime
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.prompts import ChatPromptTemplate
@@ -16,12 +19,16 @@ import os
 from dotenv import load_dotenv 
 load_dotenv(override=True)
 
-
 DeepSeek_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 dashscope_api_key = os.getenv("dashscope_api_key")
 
 # 设置环境变量
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+# 创建必要的目录
+SAVED_FILES_DIR = "saved_files"
+METADATA_FILE = "file_metadata.json"
+os.makedirs(SAVED_FILES_DIR, exist_ok=True)
 
 # 页面配置
 st.set_page_config(
@@ -31,10 +38,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 自定义CSS样式
+# [保持原有的CSS样式不变]
 st.markdown("""
 <style>
-    /* 主题色彩 */
     :root {
         --primary-color: #1f77b4;
         --secondary-color: #ff7f0e;
@@ -45,12 +51,10 @@ st.markdown("""
         --supermarket-color: #28a745;
     }
     
-    /* 隐藏默认的Streamlit样式 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    /* 标题样式 */
     .main-header {
         background: linear-gradient(90deg, #1f77b4, #ff7f0e, #28a745);
         -webkit-background-clip: text;
@@ -61,7 +65,6 @@ st.markdown("""
         margin-bottom: 2rem;
     }
     
-    /* 卡片样式 */
     .info-card {
         background: white;
         padding: 1.5rem;
@@ -86,7 +89,6 @@ st.markdown("""
         border-left: 4px solid var(--supermarket-color);
     }
     
-    /* 按钮样式 */
     .stButton > button {
         background: linear-gradient(45deg, #1f77b4, #2196F3);
         color: white;
@@ -103,75 +105,91 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(31, 119, 180, 0.4);
     }
     
-    /* Tab样式 */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 0.5rem;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        height: 60px;
-        background-color: white;
-        border-radius: 8px;
-        padding: 0 24px;
-        font-weight: 600;
-        border: 2px solid transparent;
-        transition: all 0.3s ease;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(45deg, #1f77b4, #2196F3);
-        color: white !important;
-        border: 2px solid #1f77b4;
-    }
-    
-    /* 侧边栏样式 */
-    .css-1d391kg {
-        background: linear-gradient(180deg, #f8f9fa, #ffffff);
-    }
-    
-    /* 文件上传区域 */
-    .uploadedFile {
+    .file-item {
         background: #f8f9fa;
-        border: 2px dashed #1f77b4;
-        border-radius: 10px;
         padding: 1rem;
-        text-align: center;
-        margin: 1rem 0;
-    }
-    
-    /* 状态指示器 */
-    .status-indicator {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-    
-    .status-ready {
-        background: #e8f5e8;
-        color: #2ca02c;
-        border: 1px solid #2ca02c;
-    }
-    
-    .status-waiting {
-        background: #fff8e1;
-        color: #ff9800;
-        border: 1px solid #ff9800;
-    }
-    
-    .status-supermarket {
-        background: #e8f8f0;
-        color: #28a745;
-        border: 1px solid #28a745;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        border-left: 3px solid var(--supermarket-color);
     }
 </style>
 """, unsafe_allow_html=True)
+
+# 新增：文件管理功能
+def get_file_hash(file_path):
+    """计算文件的MD5哈希值"""
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+def load_metadata():
+    """加载文件元数据"""
+    if os.path.exists(METADATA_FILE):
+        with open(METADATA_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {}
+
+def save_metadata(metadata):
+    """保存文件元数据"""
+    with open(METADATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+def save_csv_file(uploaded_file, file_type="product"):
+    """保存上传的CSV文件"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{file_type}_{timestamp}_{uploaded_file.name}"
+    file_path = os.path.join(SAVED_FILES_DIR, filename)
+    
+    # 保存文件
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    
+    # 计算哈希值
+    file_hash = get_file_hash(file_path)
+    
+    # 更新元数据
+    metadata = load_metadata()
+    metadata[filename] = {
+        "original_name": uploaded_file.name,
+        "file_type": file_type,
+        "upload_time": timestamp,
+        "file_hash": file_hash,
+        "file_path": file_path,
+        "db_name": f"{file_type}_db_{timestamp}"
+    }
+    save_metadata(metadata)
+    
+    return filename, file_path
+
+def load_saved_csv(filename):
+    """加载已保存的CSV文件"""
+    metadata = load_metadata()
+    if filename in metadata:
+        file_path = metadata[filename]["file_path"]
+        if os.path.exists(file_path):
+            return pd.read_csv(file_path)
+    return None
+
+def check_saved_databases():
+    """检查已保存的数据库"""
+    saved_dbs = []
+    metadata = load_metadata()
+    
+    for filename, info in metadata.items():
+        db_name = info.get("db_name", "")
+        if os.path.exists(db_name) and os.path.exists(f"{db_name}/index.faiss"):
+            saved_dbs.append({
+                "filename": filename,
+                "original_name": info["original_name"],
+                "upload_time": info["upload_time"],
+                "file_type": info["file_type"],
+                "db_name": db_name,
+                "file_path": info["file_path"]
+            })
+    
+    return saved_dbs
 
 # 初始化embeddings
 @st.cache_resource
@@ -198,8 +216,10 @@ def init_session_state():
         st.session_state.df = None
     if 'product_df' not in st.session_state:
         st.session_state.product_df = None
+    if 'current_supermarket_db' not in st.session_state:
+        st.session_state.current_supermarket_db = None
 
-# PDF处理函数
+# [保持原有的PDF处理函数不变]
 def pdf_read(pdf_doc):
     text = ""
     for pdf in pdf_doc:
@@ -255,7 +275,6 @@ def csv_to_text(df):
     text_chunks = []
     
     for index, row in df.iterrows():
-        # 将每一行转换为描述性文本
         row_text = f"商品信息 {index + 1}:\n"
         for column, value in row.items():
             row_text += f"{column}: {value}\n"
@@ -264,34 +283,31 @@ def csv_to_text(df):
     
     return text_chunks
 
-def process_product_csv(df):
+def process_product_csv(df, db_name):
     """处理商品CSV数据并创建向量数据库"""
     try:
-        # 将CSV转换为文本块
         text_chunks = csv_to_text(df)
         
-        # 使用文本分割器进一步处理
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         final_chunks = []
         for chunk in text_chunks:
             final_chunks.extend(text_splitter.split_text(chunk))
         
-        # 创建向量数据库
-        vector_store(final_chunks, "supermarket_db")
+        vector_store(final_chunks, db_name)
         return True, len(final_chunks)
     except Exception as e:
         return False, str(e)
 
-def get_supermarket_response(user_question):
+def get_supermarket_response(user_question, db_name="supermarket_db"):
     """处理超市客服问题"""
-    if not check_database_exists("supermarket_db"):
-        return "❌ 请先上传商品CSV文件并点击'处理商品数据'按钮！"
+    if not check_database_exists(db_name):
+        return "❌ 请先选择或上传商品CSV文件！"
     
     try:
         embeddings = init_embeddings()
         llm = init_llm()
         
-        new_db = FAISS.load_local("supermarket_db", embeddings, allow_dangerous_deserialization=True)
+        new_db = FAISS.load_local(db_name, embeddings, allow_dangerous_deserialization=True)
         retriever = new_db.as_retriever(search_kwargs={"k": 5})
         
         prompt = ChatPromptTemplate.from_messages([
@@ -309,7 +325,7 @@ def get_supermarket_response(user_question):
 - 如果没有相关商品信息，诚实告知并建议其他方案
 - 适当使用表情符号让对话更生动
 
-如果顾客询问的商品不在数据库中，请说"很抱歉，我没有找到相关商品信息，请您到店内咨询工作人员或者尝试描述更具体的商品信息。"""),
+如果顾客询问的商品不在数据库中，请说"很抱歉，我没有找到相关商品信息，请您到店内咨询工作人员或者尝试描述更具体的商品信息。" """),
             ("placeholder", "{chat_history}"),
             ("human", "{input}"),
             ("placeholder", "{agent_scratchpad}"),
@@ -329,7 +345,7 @@ def get_supermarket_response(user_question):
     except Exception as e:
         return f"❌ 处理问题时出错: {str(e)}"
 
-# CSV数据分析函数
+# [保持原有的CSV数据分析函数不变]
 def get_csv_response(query: str) -> str:
     if st.session_state.df is None:
         return "请先上传CSV文件"
@@ -374,28 +390,28 @@ def main():
     st.markdown('<h1 class="main-header">🤖 智能超市个性化客服</h1>', unsafe_allow_html=True)
     st.markdown('<div style="text-align: center; margin-bottom: 2rem; color: #666;">集PDF问答、数据分析与超市客服于一体的智能助手</div>', unsafe_allow_html=True)
     
-    # 创建三个主要功能的标签页
-    tab1, tab2, tab3 = st.tabs(["📄 PDF智能问答", "📊 CSV数据分析", "🛒 超市智能客服"])
+    # 检查已保存的数据库
+    saved_dbs = check_saved_databases()
     
-    # PDF问答模块
+    # 创建三个主要功能的标签页
+    tab1, tab2, tab3, tab4 = st.tabs(["📄 PDF智能问答", "📊 CSV数据分析", "🛒 超市智能客服", "📁 数据管理"])
+    
+    # [PDF问答模块保持不变]
     with tab1:
         col1, col2 = st.columns([2, 1])
         
         with col1:
             st.markdown("### 💬 与PDF文档对话")
             
-            # 显示数据库状态
             if check_database_exists("faiss_db"):
                 st.markdown('<div class="info-card success-card"><span class="status-indicator status-ready">✅ PDF数据库已准备就绪</span></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div class="info-card warning-card"><span class="status-indicator status-waiting">⚠️ 请先上传并处理PDF文件</span></div>', unsafe_allow_html=True)
             
-            # 聊天界面
             for message in st.session_state.pdf_messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
             
-            # 用户输入
             if pdf_query := st.chat_input("💭 向PDF提问...", disabled=not check_database_exists("faiss_db")):
                 st.session_state.pdf_messages.append({"role": "user", "content": pdf_query})
                 with st.chat_message("user"):
@@ -410,7 +426,6 @@ def main():
         with col2:
             st.markdown("### 📁 文档管理")
             
-            # 文件上传
             pdf_docs = st.file_uploader(
                 "📎 上传PDF文件",
                 accept_multiple_files=True,
@@ -424,7 +439,6 @@ def main():
                 for i, pdf in enumerate(pdf_docs, 1):
                     st.write(f"• {pdf.name}")
             
-            # 处理按钮
             if st.button("🚀 上传并处理PDF文档", disabled=not pdf_docs, use_container_width=True):
                 with st.spinner("📊 正在处理PDF文件..."):
                     try:
@@ -444,7 +458,6 @@ def main():
                     except Exception as e:
                         st.error(f"❌ 处理PDF时出错: {str(e)}")
             
-            # 清除数据库
             if st.button("🗑️ 清除PDF数据库", use_container_width=True):
                 try:
                     import shutil
@@ -456,20 +469,18 @@ def main():
                 except Exception as e:
                     st.error(f"清除失败: {e}")
     
-    # CSV数据分析模块
+    # [CSV数据分析模块保持不变]
     with tab2:
         col1, col2 = st.columns([2, 1])
         
         with col1:
             st.markdown("### 📈 数据分析对话")
             
-            # 显示数据状态
             if st.session_state.df is not None:
                 st.markdown('<div class="info-card success-card"><span class="status-indicator status-ready">✅ 数据已加载完成</span></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div class="info-card warning-card"><span class="status-indicator status-waiting">⚠️ 请先上传CSV文件</span></div>', unsafe_allow_html=True)
             
-            # 聊天界面
             for message in st.session_state.csv_messages:
                 with st.chat_message(message["role"]):
                     if message["type"] == "dataframe":
@@ -481,7 +492,6 @@ def main():
                     else:
                         st.markdown(message["content"])
             
-            # 用户输入
             if csv_query := st.chat_input("📊 分析数据...", disabled=st.session_state.df is None):
                 st.session_state.csv_messages.append({"role": "user", "content": csv_query, "type": "text"})
                 with st.chat_message("user"):
@@ -507,18 +517,15 @@ def main():
         with col2:
             st.markdown("### 📊 数据管理")
             
-            # CSV文件上传
             csv_file = st.file_uploader("📈 上传CSV文件", type='csv', key="analysis_csv")
             if csv_file:
                 st.session_state.df = pd.read_csv(csv_file)
                 st.success(f"✅ 数据加载成功!")
                 
-                # 显示数据预览
                 with st.expander("👀 数据预览", expanded=True):
                     st.dataframe(st.session_state.df.head())
                     st.write(f"📏 数据维度: {st.session_state.df.shape[0]} 行 × {st.session_state.df.shape[1]} 列")
             
-            # 数据信息
             if st.session_state.df is not None:
                 if st.button("📋 显示数据信息", use_container_width=True):
                     with st.expander("📊 数据统计信息", expanded=True):
@@ -534,7 +541,6 @@ def main():
                         })
                         st.dataframe(dtype_info, use_container_width=True)
             
-            # 清除数据
             if st.button("🗑️ 清除CSV数据", use_container_width=True, key="clear_csv"):
                 st.session_state.df = None
                 st.session_state.csv_messages = []
@@ -543,21 +549,24 @@ def main():
                 st.success("数据已清除")
                 st.rerun()
     
-    # 超市智能客服模块
+    # 改进的超市智能客服模块
     with tab3:
         col1, col2 = st.columns([2, 1])
         
         with col1:
             st.markdown("### 🛒 超市智能客服")
             
-            # 显示客服状态
-            if check_database_exists("supermarket_db"):
-                st.markdown('<div class="info-card supermarket-card"><span class="status-indicator status-supermarket">🛒 超市客服系统已就绪</span></div>', unsafe_allow_html=True)
+            # 显示当前使用的数据库状态
+            if st.session_state.current_supermarket_db and check_database_exists(st.session_state.current_supermarket_db):
+                st.markdown(f'<div class="info-card supermarket-card"><span class="status-indicator status-supermarket">🛒 当前使用数据库: {st.session_state.current_supermarket_db}</span></div>', unsafe_allow_html=True)
+            elif saved_dbs:
+                st.markdown('<div class="info-card warning-card"><span class="status-indicator status-waiting">⚠️ 请在右侧选择一个已保存的数据库或上传新文件</span></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div class="info-card warning-card"><span class="status-indicator status-waiting">⚠️ 请先上传商品信息CSV文件</span></div>', unsafe_allow_html=True)
             
             # 欢迎消息
-            if not st.session_state.supermarket_messages and check_database_exists("supermarket_db"):
+            current_db = st.session_state.current_supermarket_db
+            if not st.session_state.supermarket_messages and current_db and check_database_exists(current_db):
                 welcome_msg = "🛒 欢迎来到智能超市！我是您的专属客服助手，可以帮您：\n\n• 🔍 查找商品信息\n• 💰 了解价格详情\n• 📦 查询库存状态\n• 🎯 推荐相关商品\n• 💡 提供购物建议\n\n请问今天需要什么帮助呢？"
                 st.session_state.supermarket_messages.append({"role": "assistant", "content": welcome_msg})
             
@@ -567,21 +576,45 @@ def main():
                     st.markdown(message["content"])
             
             # 用户输入
-            if supermarket_query := st.chat_input("🛒 询问商品信息...", disabled=not check_database_exists("supermarket_db")):
+            can_chat = current_db and check_database_exists(current_db)
+            if supermarket_query := st.chat_input("🛒 询问商品信息...", disabled=not can_chat):
                 st.session_state.supermarket_messages.append({"role": "user", "content": supermarket_query})
                 with st.chat_message("user"):
                     st.markdown(supermarket_query)
                 
                 with st.chat_message("assistant"):
                     with st.spinner("🔍 正在查找商品信息..."):
-                        response = get_supermarket_response(supermarket_query)
+                        response = get_supermarket_response(supermarket_query, current_db)
                     st.markdown(response)
                     st.session_state.supermarket_messages.append({"role": "assistant", "content": response})
         
         with col2:
             st.markdown("### 🏪 商品数据管理")
             
-            # 商品CSV文件上传
+            # 显示已保存的数据库
+            if saved_dbs:
+                st.markdown("**📚 已保存的商品数据库:**")
+                for i, db_info in enumerate(saved_dbs):
+                    if db_info["file_type"] == "product":
+                        is_current = st.session_state.current_supermarket_db == db_info["db_name"]
+                        status_icon = "🟢" if is_current else "⚪"
+                        
+                        col_a, col_b = st.columns([3, 1])
+                        with col_a:
+                            st.write(f"{status_icon} **{db_info['original_name']}**")
+                            st.caption(f"上传时间: {db_info['upload_time']}")
+                        with col_b:
+                            if st.button("选择", key=f"select_{i}", disabled=is_current, use_container_width=True):
+                                st.session_state.current_supermarket_db = db_info["db_name"]
+                                st.session_state.product_df = load_saved_csv(db_info["filename"])
+                                st.session_state.supermarket_messages = []  # 清除之前的对话
+                                st.success(f"已切换到: {db_info['original_name']}")
+                                st.rerun()
+                
+                st.markdown("---")
+            
+            # 上传新的商品CSV文件
+            st.markdown("**📤 上传新的商品数据:**")
             product_csv = st.file_uploader(
                 "🛒 上传商品信息CSV", 
                 type='csv', 
@@ -593,32 +626,43 @@ def main():
                 st.session_state.product_df = pd.read_csv(product_csv)
                 st.success(f"✅ 商品数据加载成功!")
                 
-                # 显示商品数据预览
                 with st.expander("👀 商品数据预览", expanded=True):
                     st.dataframe(st.session_state.product_df.head())
                     st.write(f"📏 商品数据: {st.session_state.product_df.shape[0]} 种商品 × {st.session_state.product_df.shape[1]} 个字段")
                     
-                # 显示列信息
                 st.write("**数据字段:**")
                 for col in st.session_state.product_df.columns:
                     st.write(f"• {col}")
             
             # 处理商品数据
-            if st.session_state.product_df is not None:
-                if st.button("🚀 处理商品数据", use_container_width=True):
-                    with st.spinner("📊 正在创建商品知识库..."):
+            if st.session_state.product_df is not None and product_csv:
+                if st.button("🚀 保存并处理商品数据", use_container_width=True):
+                    with st.spinner("💾 正在保存文件和创建知识库..."):
                         try:
-                            success, result = process_product_csv(st.session_state.product_df)
+                            # 保存文件
+                            filename, file_path = save_csv_file(product_csv, "product")
+                            
+                            # 获取数据库名称
+                            metadata = load_metadata()
+                            db_name = metadata[filename]["db_name"]
+                            
+                            # 处理数据并创建向量数据库
+                            success, result = process_product_csv(st.session_state.product_df, db_name)
+                            
                             if success:
-                                st.success(f"✅ 商品知识库创建成功！共处理 {result} 个数据块")
+                                st.session_state.current_supermarket_db = db_name
+                                st.session_state.supermarket_messages = []  # 清除之前的对话
+                                st.success(f"✅ 商品数据已保存！创建了 {result} 个数据块")
+                                st.info(f"📁 文件已保存为: {filename}")
                                 st.balloons()
                                 st.rerun()
                             else:
                                 st.error(f"❌ 处理失败: {result}")
+                                
                         except Exception as e:
-                            st.error(f"❌ 处理商品数据时出错: {str(e)}")
+                            st.error(f"❌ 保存或处理商品数据时出错: {str(e)}")
             
-            # 商品数据统计
+            # 当前数据库的统计信息
             if st.session_state.product_df is not None:
                 with st.expander("📊 商品统计", expanded=False):
                     st.write(f"**商品总数:** {len(st.session_state.product_df)}")
@@ -630,7 +674,8 @@ def main():
                             st.write(f"• {category}: {count}种")
             
             # 示例问题
-            if check_database_exists("supermarket_db"):
+            current_db = st.session_state.current_supermarket_db
+            if current_db and check_database_exists(current_db):
                 st.markdown("### 💡 试试这些问题")
                 example_questions = [
                     "有什么特价商品吗？",
@@ -642,28 +687,123 @@ def main():
                 
                 for question in example_questions:
                     if st.button(f"💭 {question}", key=f"example_{question}", use_container_width=True):
-                        # 添加用户消息
                         st.session_state.supermarket_messages.append({"role": "user", "content": question})
                         
-                        # 获取AI回复
                         with st.spinner("🔍 正在查找商品信息..."):
-                            response = get_supermarket_response(question)
+                            response = get_supermarket_response(question, current_db)
                         
-                        # 添加助手回复
                         st.session_state.supermarket_messages.append({"role": "assistant", "content": response})
-                        
-                        # 重新运行页面以显示新消息
                         st.rerun()
+    
+    # 新增：数据管理标签页
+    with tab4:
+        st.markdown("### 📁 数据管理中心")
+        
+        # 显示所有已保存的文件
+        if saved_dbs:
+            st.markdown("#### 📚 已保存的数据文件")
             
-            # 清除超市数据
-            if st.button("🗑️ 清除超市数据", use_container_width=True):
+            for i, db_info in enumerate(saved_dbs):
+                with st.expander(f"📄 {db_info['original_name']}", expanded=False):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.write("**文件信息:**")
+                        st.write(f"• 原文件名: {db_info['original_name']}")
+                        st.write(f"• 文件类型: {db_info['file_type']}")
+                        st.write(f"• 上传时间: {db_info['upload_time']}")
+                        st.write(f"• 数据库名: {db_info['db_name']}")
+                    
+                    with col2:
+                        st.write("**操作:**")
+                        
+                        # 预览数据
+                        if st.button("👀 预览数据", key=f"preview_{i}"):
+                            try:
+                                df = load_saved_csv(db_info['filename'])
+                                if df is not None:
+                                    st.dataframe(df.head())
+                                    st.write(f"数据维度: {df.shape[0]} 行 × {df.shape[1]} 列")
+                                else:
+                                    st.error("无法加载数据")
+                            except Exception as e:
+                                st.error(f"预览失败: {str(e)}")
+                        
+                        # 删除文件和数据库
+                        if st.button("🗑️ 删除", key=f"delete_{i}", type="secondary"):
+                            try:
+                                import shutil
+                                # 删除数据库目录
+                                if os.path.exists(db_info['db_name']):
+                                    shutil.rmtree(db_info['db_name'])
+                                
+                                # 删除原文件
+                                if os.path.exists(db_info['file_path']):
+                                    os.remove(db_info['file_path'])
+                                
+                                # 更新元数据
+                                metadata = load_metadata()
+                                if db_info['filename'] in metadata:
+                                    del metadata[db_info['filename']]
+                                    save_metadata(metadata)
+                                
+                                # 如果删除的是当前使用的数据库，清除状态
+                                if st.session_state.current_supermarket_db == db_info['db_name']:
+                                    st.session_state.current_supermarket_db = None
+                                    st.session_state.product_df = None
+                                    st.session_state.supermarket_messages = []
+                                
+                                st.success(f"已删除: {db_info['original_name']}")
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"删除失败: {str(e)}")
+        else:
+            st.info("🗂️ 暂无保存的数据文件")
+        
+        # 系统清理
+        st.markdown("---")
+        st.markdown("#### 🧹 系统清理")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ 清除所有PDF数据", use_container_width=True):
                 try:
                     import shutil
-                    if os.path.exists("supermarket_db"):
-                        shutil.rmtree("supermarket_db")
-                    st.session_state.supermarket_messages = []
+                    if os.path.exists("faiss_db"):
+                        shutil.rmtree("faiss_db")
+                    st.session_state.pdf_messages = []
+                    st.success("所有PDF数据已清除")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"清除失败: {e}")
+        
+        with col2:
+            if st.button("🗑️ 清除所有商品数据", use_container_width=True):
+                try:
+                    import shutil
+                    # 删除所有商品数据库
+                    for db_info in saved_dbs:
+                        if os.path.exists(db_info['db_name']):
+                            shutil.rmtree(db_info['db_name'])
+                        if os.path.exists(db_info['file_path']):
+                            os.remove(db_info['file_path'])
+                    
+                    # 删除保存文件目录
+                    if os.path.exists(SAVED_FILES_DIR):
+                        shutil.rmtree(SAVED_FILES_DIR)
+                        os.makedirs(SAVED_FILES_DIR, exist_ok=True)
+                    
+                    # 清除元数据
+                    if os.path.exists(METADATA_FILE):
+                        os.remove(METADATA_FILE)
+                    
+                    # 清除会话状态
+                    st.session_state.current_supermarket_db = None
                     st.session_state.product_df = None
-                    st.success("超市数据已清除")
+                    st.session_state.supermarket_messages = []
+                    
+                    st.success("所有商品数据已清除")
                     st.rerun()
                 except Exception as e:
                     st.error(f"清除失败: {e}")
@@ -681,8 +821,8 @@ def main():
         st.markdown("**🛒 超市客服:**")
         st.markdown("• 商品信息查询 • 智能推荐")
     with col4:
-        st.markdown("**💡 使用提示:**")
-        st.markdown("• 支持多文件上传 • 实时对话交互")
+        st.markdown("**💾 数据管理:**")
+        st.markdown("• 文件持久化 • 自动加载")
 
 if __name__ == "__main__":
     main()
