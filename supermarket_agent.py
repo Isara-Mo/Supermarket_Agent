@@ -642,7 +642,17 @@ def main():
                 
                 for question in example_questions:
                     if st.button(f"💭 {question}", key=f"example_{question}", use_container_width=True):
+                        # 添加用户消息
                         st.session_state.supermarket_messages.append({"role": "user", "content": question})
+                        
+                        # 获取AI回复
+                        with st.spinner("🔍 正在查找商品信息..."):
+                            response = get_supermarket_response(question)
+                        
+                        # 添加助手回复
+                        st.session_state.supermarket_messages.append({"role": "assistant", "content": response})
+                        
+                        # 重新运行页面以显示新消息
                         st.rerun()
             
             # 清除超市数据
