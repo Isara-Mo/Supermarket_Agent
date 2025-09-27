@@ -5,7 +5,9 @@ langchain
 langchain-core
 langchain-community
 langchain-experimental
+langchain-deepseek
 matplotlib
 python-dotenv
 faiss-cpu
 dashscope
+tabulate
