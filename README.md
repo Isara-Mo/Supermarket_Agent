@@ -1,21 +1,128 @@
+<div align="center">
+
+# Supermarket_Agent
+
+A RAG-based intelligent supermarket assistant that integrates "PDF Q&A", "CSV Data Analysis", "Supermarket Customer Service Retrieval & Recommendation", and "Data & Vector Database Management", supporting quick deployment and use.
+
+[English](#supermarket_agent) | [中文](#supermarket_agent-中文版)
+
+</div>
+
+---
+
+## Supermarket_Agent
+
+A RAG-based intelligent supermarket assistant that integrates "PDF Q&A", "CSV Data Analysis", "Supermarket Customer Service Retrieval & Recommendation", and "Data & Vector Database Management", supporting quick deployment and use.
+
+### Key Features
+
+1. **Intelligent Customer Service (RAG)**: Mounts product vector database, supports multi-turn conversations, answers questions about discounts, inventory, brands, locations, expiration dates, understands vague requirements and provides relevant recommendations. Supports CSV and PDF data import.
+2. **Data Analysis Agent**: Can generate and execute Python code end-to-end for analysis and visualization, suitable for supermarket administrators to explore product data and create reports.
+3. **Persistent Vector Database & File Management**: Performs hash-based deduplication on uploaded data, automatically builds vector databases for new data and saves them long-term; supports preview, deletion, and quick switching between multiple databases.
+
+### Installation & Running
+
+1. **Install Dependencies**
+   
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Configure Environment Variables** (Edit the `.env` file in the project root directory)
+   
+   ```env
+   DEEPSEEK_API_KEY=your_deepseek_api_key
+   DASHSCOPE_API_KEY=your_dashscope_api_key
+   ```
+   
+   - This project uses DeepSeek's LLM and Alibaba DashScope's Embedding service by default.
+   - Get DeepSeek API: `https://platform.deepseek.com/usage`
+   - Get DashScope API: `https://bailian.console.aliyun.com/?tab=model#/api-key`
+
+3. **Start the Application**
+   
+   ```bash
+   streamlit run supermarket_agent.py
+   ```
+
+### Page Preview
+
+The frontend interaction is implemented using Streamlit. Below are screenshots of the main pages:
+
+![Intelligent Supermarket Customer Service Interface](./photo/智能超市客服界面.png)
+
+![Data Analysis Page](./photo/数据分析页面.png)
+
+![Data Management Page](./photo/数据管理页面.png)
+
+### Directory Structure Summary
+
+- `data/`: Example and processed datasets
+- `data_backup/`: Persistent storage area (uploaded files and vector databases)
+  - `data_backup/saved_files/`: Saves original uploaded CSV files
+  - `data_backup/db/`: Saves corresponding vector databases (named by timestamp)
+- `history/`: Historical version scripts
+- `photo/`: Project screenshots
+- `supermarket_agent.py`: Main application entry point
+
+### Datasets & Description
+
+- Original experimental data download: `https://gitee.com/EricLiuCN/barcode`
+- Processed data are all located in the `data/` directory:
+  
+  - `data/barcodes_v1.csv`: Removed unnecessary columns, cleaned `brand` values that were empty; 14,135 rows, 9 columns.
+  - `data/barcodes_v2.csv`: Test data, randomly sampled from v1; 1,414 rows, 9 columns.
+  - `data/barcodes_v3_admission.csv`: Updated based on v1:
+    
+    1) Cleaned abnormal values in `brand` (such as "-")
+    2) Converted `price` from object to float to improve query efficiency
+    3) Added columns `discount`, `inventory`, `expiration`, `product_location` (all randomly generated for testing)
+       - discount: 10% is 0.9, 5% is 0.8, 1% is 0.7, others are 1
+       - inventory: 20-50
+       - expiration: 2026-09-01 to 2027-09-30
+       - product_location: Areas A-H
+       Data volume: 14,065 rows, 13 columns.
+    
+    - Recommended for administrator-side data analysis functionality.
+  - `data/barcodes_v3_customer.csv`: Based on the admission version, removed `barcode`, `supplier`, `madein` columns, closer to customer search experience, suitable for building customer-facing RAG databases.
+
+### Version History
+
+- v1: Basic functionality implementation
+- v1.1: Fixed query-reply anomalies caused by "Quick Query Buttons"
+- v1.1.1: Special version, attempted local Embedding (official version still uses DashScope cloud Embedding)
+- v1.2: Vector database persistence and hash-based deduplication, reducing redundant vectorization
+- v1.3: Unified data management to `data_backup/`, CSV files in `data_backup/saved_files/`, vector databases in `data_backup/db/`, named by timestamp
+
+### Acknowledgments (Co-worker)
+
+- 余子轩
+- 姜睿哲
+
+---
+
+<details>
+<summary><h2 id="supermarket_agent-中文版">Supermarket_Agent (中文版) - Click to expand</h2></summary>
+
 ## Supermarket_Agent
 
 一个基于 RAG 的超市智能助手，集「PDF 问答」「CSV 数据分析」「超市客服检索与推荐」「数据与向量库管理」于一体，支持快速部署使用。
 
 ### 主要特性
 
-1. 智能客服（RAG）：挂载商品向量数据库，支持多轮对话，回答折扣、库存、品牌、位置、保质期等问题，理解模糊需求并给出相关推荐。支持 CSV、PDF 数据导入。
-2. 数据分析 Agent：可端到端生成并执行 Python 代码进行分析与可视化，适合超市管理员对商品数据进行探索与报表制作。
-3. 持久化向量库与文件管理：对上传数据进行哈希去重，新数据自动构建向量库并长期保存；支持预览、删除、快速切换多个数据库。
+1. **智能客服（RAG）**：挂载商品向量数据库，支持多轮对话，回答折扣、库存、品牌、位置、保质期等问题，理解模糊需求并给出相关推荐。支持 CSV、PDF 数据导入。
+2. **数据分析 Agent**：可端到端生成并执行 Python 代码进行分析与可视化，适合超市管理员对商品数据进行探索与报表制作。
+3. **持久化向量库与文件管理**：对上传数据进行哈希去重，新数据自动构建向量库并长期保存；支持预览、删除、快速切换多个数据库。
 
 ### 安装与运行
 
-1. 安装依赖
+1. **安装依赖**
    
    ```bash
    pip install -r requirements.txt
    ```
-2. 配置环境变量（编辑项目根目录下的 `.env`文件）
+
+2. **配置环境变量**（编辑项目根目录下的 `.env`文件）
    
    ```env
    DEEPSEEK_API_KEY=你的deepseek密钥
@@ -25,7 +132,8 @@
    - 本项目默认使用 deepseek 提供的 LLM 与阿里 DashScope 的 Embedding 服务。
    - 获取 deepseek API: `https://platform.deepseek.com/usage`
    - 获取 DashScope API: `https://bailian.console.aliyun.com/?tab=model#/api-key`
-3. 启动应用
+
+3. **启动应用**
    
    ```bash
    streamlit run supermarket_agent.py
@@ -85,3 +193,4 @@
 - 余子轩
 - 姜睿哲
 
+</details>
