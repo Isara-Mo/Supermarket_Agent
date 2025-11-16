@@ -2,7 +2,7 @@
 
 # Supermarket_Agent
 
-A RAG-based intelligent supermarket assistant that integrates "PDF Q&A", "CSV Data Analysis", "Supermarket Customer Service Retrieval & Recommendation", and "Data & Vector Database Management", supporting quick deployment and use.
+The goal of this project is to implement an AI Agent system based on LLM and RAG database under the LangChain framework. The system can intelligently interact with supermarket customers, answer customer questions based on supermarket product information, inventory status, discounts, locations, and prices, and recommend supermarket products according to customer questions and needs, improving customer convenience.
 
 [English](#supermarket_agent) | [中文](#supermarket_agent-中文版)
 
@@ -11,8 +11,6 @@ A RAG-based intelligent supermarket assistant that integrates "PDF Q&A", "CSV Da
 ---
 
 ## Supermarket_Agent
-
-The goal of this project is to implement an AI Agent system based on LLM and RAG database under the LangChain framework. The system can intelligently interact with supermarket customers, answer customer questions based on supermarket product information, inventory status, discounts, locations, and prices, and recommend supermarket products according to customer questions and needs, improving customer convenience.
 
 A RAG-based intelligent supermarket assistant that integrates "PDF Q&A", "CSV Data Analysis", "Supermarket Customer Service Retrieval & Recommendation", and "Data & Vector Database Management", supporting quick deployment and use.
 
