@@ -12,6 +12,8 @@ A RAG-based intelligent supermarket assistant that integrates "PDF Q&A", "CSV Da
 
 ## Supermarket_Agent
 
+The goal of this project is to implement an AI Agent system based on LLM and RAG database under the LangChain framework. The system can intelligently interact with supermarket customers, answer customer questions based on supermarket product information, inventory status, discounts, locations, and prices, and recommend supermarket products according to customer questions and needs, improving customer convenience.
+
 A RAG-based intelligent supermarket assistant that integrates "PDF Q&A", "CSV Data Analysis", "Supermarket Customer Service Retrieval & Recommendation", and "Data & Vector Database Management", supporting quick deployment and use.
 
 ### Key Features
@@ -105,6 +107,8 @@ The frontend interaction is implemented using Streamlit. Below are screenshots o
 <summary><h2 id="supermarket_agent-中文版">Supermarket_Agent (中文版) - Click to expand</h2></summary>
 
 ## Supermarket_Agent
+
+这个项目的目标是在LangChain框架下实现一个基于LLM和RAG数据库的AIAgent系统。该系统可以与超市顾客进行智能互动，能够根据超市的商品信息、库存状况、折扣、位置和价格等数据，回答顾客问题，根据顾客的问题和需求推荐超市商品，提升顾客的便利性。
 
 一个基于 RAG 的超市智能助手，集「PDF 问答」「CSV 数据分析」「超市客服检索与推荐」「数据与向量库管理」于一体，支持快速部署使用。
 
