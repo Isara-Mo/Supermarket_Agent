@@ -6,5 +6,17 @@
     "file_hash": "1757ad37707c616ce937c3e740483296",
     "file_path": "./data_backup/saved_files\\product_20250925_105914_barcodes_v3_customer_test.csv",
     "db_name": "product_db_20250925_105914"
+  },
+  "pdf_group_20251116_161153": {
+    "original_name": [
+      "barcodes_v3_customer.pdf"
+    ],
+    "saved_files": [
+      "pdf_20251116_161153_barcodes_v3_customer.pdf"
+    ],
+    "file_type": "pdf",
+    "upload_time": "20251116_161153",
+    "file_hash": "92e3050c2ef51789b05a34e28d621387",
+    "db_name": "pdf_db_20251116_161153"
   }
 }
