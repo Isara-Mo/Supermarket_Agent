@@ -30,6 +30,7 @@ SAVED_FILES_DIR = "./data_backup/saved_files"
 METADATA_FILE = "./data_backup/file_metadata.json"
 DB_FILE = "./data_backup/db"
 os.makedirs(SAVED_FILES_DIR, exist_ok=True)
+os.makedirs(DB_FILE, exist_ok=True)
 
 # 页面配置
 st.set_page_config(
@@ -39,7 +40,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# [保持原有的CSS样式不变]
+# CSS样式
 st.markdown("""
 <style>
     :root {
@@ -116,7 +117,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 新增：文件管理功能
+# 文件管理功能
 def get_file_hash(file_path):
     """计算文件的MD5哈希值"""
     hash_md5 = hashlib.md5()
@@ -164,6 +165,44 @@ def save_csv_file(uploaded_file, file_type="product"):
     
     return filename, file_path
 
+def save_pdf_files(uploaded_files):
+    """保存上传的PDF文件"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    saved_files = []
+    
+    for uploaded_file in uploaded_files:
+        filename = f"pdf_{timestamp}_{uploaded_file.name}"
+        file_path = os.path.join(SAVED_FILES_DIR, filename)
+        
+        # 保存文件
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        
+        saved_files.append(filename)
+    
+    # 计算所有文件的联合哈希
+    combined_hash = hashlib.md5()
+    for filename in saved_files:
+        file_path = os.path.join(SAVED_FILES_DIR, filename)
+        combined_hash.update(get_file_hash(file_path).encode())
+    
+    # 更新元数据
+    metadata = load_metadata()
+    db_name = f"pdf_db_{timestamp}"
+    metadata_key = f"pdf_group_{timestamp}"
+    
+    metadata[metadata_key] = {
+        "original_name": [f.name for f in uploaded_files],
+        "saved_files": saved_files,
+        "file_type": "pdf",
+        "upload_time": timestamp,
+        "file_hash": combined_hash.hexdigest(),
+        "db_name": db_name
+    }
+    save_metadata(metadata)
+    
+    return metadata_key, db_name, saved_files
+
 def load_saved_csv(filename):
     """加载已保存的CSV文件"""
     metadata = load_metadata()
@@ -184,11 +223,12 @@ def check_saved_databases():
         if os.path.exists(db_path) and os.path.exists(f"{db_path}/index.faiss"):
             saved_dbs.append({
                 "filename": filename,
-                "original_name": info["original_name"],
+                "original_name": info.get("original_name", "Unknown"),
                 "upload_time": info["upload_time"],
                 "file_type": info["file_type"],
                 "db_name": db_name,
-                "file_path": info["file_path"]
+                "file_path": info.get("file_path", ""),
+                "saved_files": info.get("saved_files", [])
             })
     
     return saved_dbs
@@ -220,8 +260,11 @@ def init_session_state():
         st.session_state.product_df = None
     if 'current_supermarket_db' not in st.session_state:
         st.session_state.current_supermarket_db = None
+    # 新增：当前PDF数据库
+    if 'current_pdf_db' not in st.session_state:
+        st.session_state.current_pdf_db = None
 
-# [保持原有的PDF处理函数不变]
+# PDF处理函数
 def pdf_read(pdf_doc):
     text = ""
     for pdf in pdf_doc:
@@ -235,25 +278,31 @@ def get_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
-def vector_store(text_chunks, db_name="faiss_db"):
+def vector_store(text_chunks, db_name):
     embeddings = init_embeddings()
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     db_path = os.path.join(DB_FILE, db_name)
     vector_store.save_local(db_path)
 
-def check_database_exists(db_name="faiss_db"):
+def check_database_exists(db_name):
+    if not db_name:
+        return False
     db_path = os.path.join(DB_FILE, db_name)
     return os.path.exists(db_path) and os.path.exists(f"{db_path}/index.faiss")
 
-def get_pdf_response(user_question):
-    if not check_database_exists("faiss_db"):
+def get_pdf_response(user_question, db_name=None):
+    if not db_name:
+        db_name = st.session_state.current_pdf_db
+    
+    if not db_name or not check_database_exists(db_name):
         return "❌ 请先上传PDF文件并点击'Submit & Process'按钮来处理文档！"
     
     try:
         embeddings = init_embeddings()
         llm = init_llm()
         
-        new_db = FAISS.load_local("faiss_db", embeddings, allow_dangerous_deserialization=True)
+        db_path = os.path.join(DB_FILE, db_name)
+        new_db = FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
         retriever = new_db.as_retriever()
         
         prompt = ChatPromptTemplate.from_messages([
@@ -312,7 +361,6 @@ def get_supermarket_response(user_question, db_name="supermarket_db"):
         llm = init_llm()
         
         db_path = os.path.join(DB_FILE, db_name)
-
         new_db = FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
         retriever = new_db.as_retriever(search_kwargs={"k": 5})
         
@@ -351,7 +399,7 @@ def get_supermarket_response(user_question, db_name="supermarket_db"):
     except Exception as e:
         return f"❌ 处理问题时出错: {str(e)}"
 
-# [保持原有的CSV数据分析函数不变]
+# CSV数据分析函数
 def get_csv_response(query: str) -> str:
     if st.session_state.df is None:
         return "请先上传CSV文件"
@@ -402,15 +450,16 @@ def main():
     # 创建三个主要功能的标签页
     tab1, tab2, tab3, tab4 = st.tabs(["📄 PDF智能问答", "📊 CSV数据分析", "🛒 超市智能客服", "📁 数据管理"])
     
-    # [PDF问答模块保持不变]
+    # PDF问答模块（已修复）
     with tab1:
         col1, col2 = st.columns([2, 1])
         
         with col1:
             st.markdown("### 💬 与PDF文档对话")
             
-            if check_database_exists("faiss_db"):
-                st.markdown('<div class="info-card success-card"><span class="status-indicator status-ready">✅ PDF数据库已准备就绪</span></div>', unsafe_allow_html=True)
+            # 显示当前使用的PDF数据库状态
+            if st.session_state.current_pdf_db and check_database_exists(st.session_state.current_pdf_db):
+                st.markdown(f'<div class="info-card success-card"><span class="status-indicator status-ready">✅ 当前PDF数据库: {st.session_state.current_pdf_db}</span></div>', unsafe_allow_html=True)
             else:
                 st.markdown('<div class="info-card warning-card"><span class="status-indicator status-waiting">⚠️ 请先上传并处理PDF文件</span></div>', unsafe_allow_html=True)
             
@@ -418,20 +467,52 @@ def main():
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
             
-            if pdf_query := st.chat_input("💭 向PDF提问...", disabled=not check_database_exists("faiss_db")):
+            can_chat = st.session_state.current_pdf_db and check_database_exists(st.session_state.current_pdf_db)
+            if pdf_query := st.chat_input("💭 向PDF提问...", disabled=not can_chat):
                 st.session_state.pdf_messages.append({"role": "user", "content": pdf_query})
                 with st.chat_message("user"):
                     st.markdown(pdf_query)
                 
                 with st.chat_message("assistant"):
                     with st.spinner("🤔 AI正在分析文档..."):
-                        response = get_pdf_response(pdf_query)
+                        response = get_pdf_response(pdf_query, st.session_state.current_pdf_db)
                     st.markdown(response)
                     st.session_state.pdf_messages.append({"role": "assistant", "content": response})
         
         with col2:
             st.markdown("### 📁 文档管理")
             
+            # 显示已保存的PDF数据库
+            pdf_dbs = [db for db in saved_dbs if db["file_type"] == "pdf"]
+            if pdf_dbs:
+                st.markdown("**📚 已保存的PDF数据库:**")
+                for i, db_info in enumerate(pdf_dbs):
+                    is_current = st.session_state.current_pdf_db == db_info["db_name"]
+                    status_icon = "🟢" if is_current else "⚪"
+                    
+                    col_a, col_b = st.columns([3, 1])
+                    with col_a:
+                        # 显示文件名列表
+                        if isinstance(db_info.get('original_name'), list):
+                            names = ", ".join(db_info['original_name'][:2])
+                            if len(db_info['original_name']) > 2:
+                                names += f" (+{len(db_info['original_name'])-2})"
+                        else:
+                            names = str(db_info.get('original_name', 'Unknown'))
+                        
+                        st.write(f"{status_icon} **{names}**")
+                        st.caption(f"上传时间: {db_info['upload_time']}")
+                    with col_b:
+                        if st.button("选择", key=f"select_pdf_{i}", disabled=is_current, use_container_width=True):
+                            st.session_state.current_pdf_db = db_info["db_name"]
+                            st.session_state.pdf_messages = []  # 清除之前的对话
+                            st.success(f"已切换PDF数据库")
+                            st.rerun()
+                
+                st.markdown("---")
+            
+            # 上传新PDF
+            st.markdown("**📤 上传新的PDF文件:**")
             pdf_docs = st.file_uploader(
                 "📎 上传PDF文件",
                 accept_multiple_files=True,
@@ -448,34 +529,38 @@ def main():
             if st.button("🚀 上传并处理PDF文档", disabled=not pdf_docs, use_container_width=True):
                 with st.spinner("📊 正在处理PDF文件..."):
                     try:
+                        # 保存PDF文件
+                        metadata_key, db_name, saved_files = save_pdf_files(pdf_docs)
+                        
+                        # 提取文本
                         raw_text = pdf_read(pdf_docs)
                         if not raw_text.strip():
                             st.error("❌ 无法从PDF中提取文本")
-                            return
-                        
-                        text_chunks = get_chunks(raw_text)
-                        st.info(f"📝 文本已分割为 {len(text_chunks)} 个片段")
-                        
-                        vector_store(text_chunks, "faiss_db")
-                        st.success("✅ PDF处理完成！")
-                        st.balloons()
-                        st.rerun()
+                        else:
+                            text_chunks = get_chunks(raw_text)
+                            st.info(f"📝 文本已分割为 {len(text_chunks)} 个片段")
+                            
+                            # 创建向量数据库
+                            vector_store(text_chunks, db_name)
+                            
+                            # 设置为当前数据库
+                            st.session_state.current_pdf_db = db_name
+                            st.session_state.pdf_messages = []
+                            
+                            st.success("✅ PDF处理完成！")
+                            st.info(f"📁 已保存为: {db_name}")
+                            st.balloons()
+                            st.rerun()
                         
                     except Exception as e:
                         st.error(f"❌ 处理PDF时出错: {str(e)}")
             
-            if st.button("🗑️ 清除PDF数据库", use_container_width=True):
-                try:
-                    import shutil
-                    if os.path.exists("faiss_db"):
-                        shutil.rmtree("faiss_db")
-                    st.session_state.pdf_messages = []
-                    st.success("数据库已清除")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"清除失败: {e}")
+            if st.button("🗑️ 清除当前PDF对话", use_container_width=True):
+                st.session_state.pdf_messages = []
+                st.success("对话已清除")
+                st.rerun()
     
-    # [CSV数据分析模块保持不变]
+    # CSV数据分析模块
     with tab2:
         col1, col2 = st.columns([2, 1])
         
@@ -555,7 +640,7 @@ def main():
                 st.success("数据已清除")
                 st.rerun()
     
-    # 改进的超市智能客服模块
+    # 超市智能客服模块
     with tab3:
         col1, col2 = st.columns([2, 1])
         
@@ -598,24 +683,24 @@ def main():
             st.markdown("### 🏪 商品数据管理")
             
             # 显示已保存的数据库
-            if saved_dbs:
+            product_dbs = [db for db in saved_dbs if db["file_type"] == "product"]
+            if product_dbs:
                 st.markdown("**📚 已保存的商品数据库:**")
-                for i, db_info in enumerate(saved_dbs):
-                    if db_info["file_type"] == "product":
-                        is_current = st.session_state.current_supermarket_db == db_info["db_name"]
-                        status_icon = "🟢" if is_current else "⚪"
-                        
-                        col_a, col_b = st.columns([3, 1])
-                        with col_a:
-                            st.write(f"{status_icon} **{db_info['original_name']}**")
-                            st.caption(f"上传时间: {db_info['upload_time']}")
-                        with col_b:
-                            if st.button("选择", key=f"select_{i}", disabled=is_current, use_container_width=True):
-                                st.session_state.current_supermarket_db = db_info["db_name"]
-                                st.session_state.product_df = load_saved_csv(db_info["filename"])
-                                st.session_state.supermarket_messages = []  # 清除之前的对话
-                                st.success(f"已切换到: {db_info['original_name']}")
-                                st.rerun()
+                for i, db_info in enumerate(product_dbs):
+                    is_current = st.session_state.current_supermarket_db == db_info["db_name"]
+                    status_icon = "🟢" if is_current else "⚪"
+                    
+                    col_a, col_b = st.columns([3, 1])
+                    with col_a:
+                        st.write(f"{status_icon} **{db_info['original_name']}**")
+                        st.caption(f"上传时间: {db_info['upload_time']}")
+                    with col_b:
+                        if st.button("选择", key=f"select_{i}", disabled=is_current, use_container_width=True):
+                            st.session_state.current_supermarket_db = db_info["db_name"]
+                            st.session_state.product_df = load_saved_csv(db_info["filename"])
+                            st.session_state.supermarket_messages = []  # 清除之前的对话
+                            st.success(f"已切换到: {db_info['original_name']}")
+                            st.rerun()
                 
                 st.markdown("---")
             
@@ -701,7 +786,7 @@ def main():
                         st.session_state.supermarket_messages.append({"role": "assistant", "content": response})
                         st.rerun()
     
-    # 新增：数据管理标签页
+    # 数据管理标签页
     with tab4:
         st.markdown("### 📁 数据管理中心")
         
@@ -710,21 +795,31 @@ def main():
             st.markdown("#### 📚 已保存的数据文件")
             
             for i, db_info in enumerate(saved_dbs):
-                with st.expander(f"📄 {db_info['original_name']}", expanded=False):
+                file_type_icon = "📄" if db_info['file_type'] == "pdf" else "📊"
+                file_type_name = "PDF文档" if db_info['file_type'] == "pdf" else "商品数据"
+                
+                # 显示文件名
+                if isinstance(db_info.get('original_name'), list):
+                    display_name = ", ".join(db_info['original_name'][:2])
+                    if len(db_info['original_name']) > 2:
+                        display_name += f" (+{len(db_info['original_name'])-2})"
+                else:
+                    display_name = str(db_info.get('original_name', 'Unknown'))
+                
+                with st.expander(f"{file_type_icon} {display_name} ({file_type_name})", expanded=False):
                     col1, col2 = st.columns(2)
                     
                     with col1:
                         st.write("**文件信息:**")
-                        st.write(f"• 原文件名: {db_info['original_name']}")
-                        st.write(f"• 文件类型: {db_info['file_type']}")
+                        st.write(f"• 文件类型: {file_type_name}")
                         st.write(f"• 上传时间: {db_info['upload_time']}")
                         st.write(f"• 数据库名: {db_info['db_name']}")
                     
                     with col2:
                         st.write("**操作:**")
                         
-                        # 预览数据
-                        if st.button("👀 预览数据", key=f"preview_{i}"):
+                        # 预览数据（仅CSV）
+                        if db_info['file_type'] == "product" and st.button("👀 预览数据", key=f"preview_{i}"):
                             try:
                                 df = load_saved_csv(db_info['filename'])
                                 if df is not None:
@@ -745,8 +840,14 @@ def main():
                                     shutil.rmtree(db_path)
                                 
                                 # 删除原文件
-                                if os.path.exists(db_info['file_path']):
-                                    os.remove(db_info['file_path'])
+                                if db_info['file_type'] == "product":
+                                    if os.path.exists(db_info['file_path']):
+                                        os.remove(db_info['file_path'])
+                                else:  # PDF文件
+                                    for saved_file in db_info.get('saved_files', []):
+                                        file_path = os.path.join(SAVED_FILES_DIR, saved_file)
+                                        if os.path.exists(file_path):
+                                            os.remove(file_path)
                                 
                                 # 更新元数据
                                 metadata = load_metadata()
@@ -755,12 +856,15 @@ def main():
                                     save_metadata(metadata)
                                 
                                 # 如果删除的是当前使用的数据库，清除状态
-                                if st.session_state.current_supermarket_db == db_info['db_name']:
+                                if db_info['file_type'] == "product" and st.session_state.current_supermarket_db == db_info['db_name']:
                                     st.session_state.current_supermarket_db = None
                                     st.session_state.product_df = None
                                     st.session_state.supermarket_messages = []
+                                elif db_info['file_type'] == "pdf" and st.session_state.current_pdf_db == db_info['db_name']:
+                                    st.session_state.current_pdf_db = None
+                                    st.session_state.pdf_messages = []
                                 
-                                st.success(f"已删除: {db_info['original_name']}")
+                                st.success(f"已删除: {display_name}")
                                 st.rerun()
                                 
                             except Exception as e:
@@ -772,13 +876,27 @@ def main():
         st.markdown("---")
         st.markdown("#### 🧹 系统清理")
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
+        
         with col1:
             if st.button("🗑️ 清除所有PDF数据", use_container_width=True):
                 try:
                     import shutil
-                    if os.path.exists("faiss_db"):
-                        shutil.rmtree("faiss_db")
+                    # 删除所有PDF数据库和文件
+                    metadata = load_metadata()
+                    for key, info in list(metadata.items()):
+                        if info.get("file_type") == "pdf":
+                            db_path = os.path.join(DB_FILE, info["db_name"])
+                            if os.path.exists(db_path):
+                                shutil.rmtree(db_path)
+                            for saved_file in info.get('saved_files', []):
+                                file_path = os.path.join(SAVED_FILES_DIR, saved_file)
+                                if os.path.exists(file_path):
+                                    os.remove(file_path)
+                            del metadata[key]
+                    
+                    save_metadata(metadata)
+                    st.session_state.current_pdf_db = None
                     st.session_state.pdf_messages = []
                     st.success("所有PDF数据已清除")
                     st.rerun()
@@ -790,28 +908,52 @@ def main():
                 try:
                     import shutil
                     # 删除所有商品数据库
-                    for db_info in saved_dbs:
-                        db_path = os.path.join(DB_FILE, db_info['db_name'])
-                        if os.path.exists(db_path):
-                            shutil.rmtree(db_path)
-                        if os.path.exists(db_info['file_path']):
-                            os.remove(db_info['file_path'])
+                    metadata = load_metadata()
+                    for key, info in list(metadata.items()):
+                        if info.get("file_type") == "product":
+                            db_path = os.path.join(DB_FILE, info["db_name"])
+                            if os.path.exists(db_path):
+                                shutil.rmtree(db_path)
+                            if os.path.exists(info.get("file_path", "")):
+                                os.remove(info["file_path"])
+                            del metadata[key]
                     
-                    # 删除保存文件目录
-                    if os.path.exists(SAVED_FILES_DIR):
-                        shutil.rmtree(SAVED_FILES_DIR)
-                        os.makedirs(SAVED_FILES_DIR, exist_ok=True)
-                    
-                    # 清除元数据
-                    if os.path.exists(METADATA_FILE):
-                        os.remove(METADATA_FILE)
-                    
-                    # 清除会话状态
+                    save_metadata(metadata)
                     st.session_state.current_supermarket_db = None
                     st.session_state.product_df = None
                     st.session_state.supermarket_messages = []
                     
                     st.success("所有商品数据已清除")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"清除失败: {e}")
+        
+        with col3:
+            if st.button("🗑️ 清除所有数据", use_container_width=True, type="primary"):
+                try:
+                    import shutil
+                    # 删除所有数据库目录
+                    if os.path.exists(DB_FILE):
+                        shutil.rmtree(DB_FILE)
+                        os.makedirs(DB_FILE, exist_ok=True)
+                    
+                    # 删除所有保存的文件
+                    if os.path.exists(SAVED_FILES_DIR):
+                        shutil.rmtree(SAVED_FILES_DIR)
+                        os.makedirs(SAVED_FILES_DIR, exist_ok=True)
+                    
+                    # 删除元数据
+                    if os.path.exists(METADATA_FILE):
+                        os.remove(METADATA_FILE)
+                    
+                    # 清除所有会话状态
+                    st.session_state.current_pdf_db = None
+                    st.session_state.current_supermarket_db = None
+                    st.session_state.product_df = None
+                    st.session_state.pdf_messages = []
+                    st.session_state.supermarket_messages = []
+                    
+                    st.success("所有数据已清除")
                     st.rerun()
                 except Exception as e:
                     st.error(f"清除失败: {e}")
@@ -834,3 +976,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
