@@ -1,1 +1,5 @@
 *.pyc
+.env
+
+/supermarket_agent/__pycache__
+
