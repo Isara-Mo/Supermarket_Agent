@@ -2,7 +2,9 @@
 
 # Supermarket_Agent
 
-The goal of this project is to implement an AI Agent system based on LLM and RAG database under the LangChain framework. The system can intelligently interact with supermarket customers, answer customer questions based on supermarket product information, inventory status, discounts, locations, and prices, and recommend supermarket products according to customer questions and needs, improving customer convenience.
+The goal of this project is to implement an AI Agent system based on LLM and RAG database under the LangChain framework (v0.3). The system can intelligently interact with supermarket customers, answer customer questions based on supermarket product information, inventory status, discounts, locations, and prices, and recommend supermarket products according to customer questions and needs, improving customer convenience.
+
+notice:The project is based on LangChain v0.3
 
 [English](#supermarket_agent) | [中文](#supermarket_agent-中文版)
 
