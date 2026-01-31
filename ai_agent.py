@@ -20,8 +20,8 @@ complexity_context = contextvars.ContextVar("complexity", default=0)
 # ======================
 _tokenizer = None
 _session = None
-_qwen_fast_model = ChatTongyi(model="qwen-flash",api_key="sk-1a297d3dd6a64f409bf45e3009552c09")                    #api_key调用暂时还不太规范
-_qwen_max_model = ChatTongyi(model="qwen3-max",api_key='sk-1a297d3dd6a64f409bf45e3009552c09')
+_qwen_fast_model = ChatTongyi(model="qwen-flash",api_key="")                    #api_key调用暂时还不太规范
+_qwen_max_model = ChatTongyi(model="qwen3-max",api_key='')
 def init_embeddings(dashscope_api_key):
     return DashScopeEmbeddings(model="text-embedding-v1", dashscope_api_key=dashscope_api_key)
 
