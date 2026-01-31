@@ -29,7 +29,10 @@ A RAG-based intelligent supermarket assistant that integrates "Supermarket Custo
 
 1. **Download Model Weights**
    
-   [Model weights download link] (to be added)
+   ```bash
+   # Visit the following link to download bert_classifier.onnx
+   https://huggingface.co/IsaraYu/Supermarket-querry-TextClassification/tree/main
+   ```
 
 2. **Install Dependencies**
    
@@ -135,7 +138,10 @@ The frontend interaction is implemented using Streamlit. Below are screenshots o
 
 1. **下载模型权重**
    
-   [模型权重下载链接]（待补充）
+   ```bash
+   # Visit the following link to download bert_classifier.onnx
+   https://huggingface.co/IsaraYu/Supermarket-querry-TextClassification/tree/main
+   ```
 
 2. **安装依赖**
    
