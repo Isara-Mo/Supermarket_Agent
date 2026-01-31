@@ -1,0 +1,37 @@
+[project]
+name = "supermarket-agent-1-0"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dashscope>=1.25.10",
+    "faiss-cpu>=1.13.2",
+    "langchain>=1.2.7",
+    "langchain-community>=0.4.1",
+    "langchain-core>=1.2.7",
+    "langchain-deepseek>=1.0.1",
+    "langchain-experimental>=0.4.1",
+    "langchain-text-splitters>=1.1.0",
+    "matplotlib>=3.10.8",
+    "onnxruntime-gpu>=1.23.2",
+    "onnxscript>=0.6.0",
+    "pandas>=2.3.3",
+    "pypdf2>=3.0.1",
+    "python-dotenv>=1.2.1",
+    "streamlit>=1.53.1",
+    "tabulate>=0.9.0",
+    "torch>=2.10.0",
+    "torchaudio>=2.10.0",
+    "torchvision>=0.25.0",
+    "transformers>=5.0.0",
+]
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+torchaudio = { index = "pytorch-cu128" }
