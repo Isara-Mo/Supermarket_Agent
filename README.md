@@ -2,7 +2,7 @@
 
 # Supermarket_Agent
 
-The goal of this project is to implement an AI Agent system based on LLM and RAG database under the LangChain framework (v1.0). The system can intelligently interact with supermarket customers, answer customer questions based on supermarket product information, inventory status, discounts, locations, and prices, and recommend supermarket products according to customer questions and needs, improving customer convenience.
+The goal of this project is to implement an AI Agent system based on LLM and RAG database under the LangChain framework (v1.0). The system can intelligently interact with supermarket customers, answer customer questions based on supermarket product information, inventory status, discounts, locations, and prices, and recommend supermarket products according to customer questions and needs, improving customer convenience. On test data, the dynamic model adjustment by question complexity achieves an average response time of **5.67s**, compared to **7.95s** for a baseline where all queries use the Qwen3_max Agent without complexity classification—a **29.5%** reduction in average processing time per question.
 
 notice:The project is based on LangChain v1.0
 
@@ -76,6 +76,15 @@ The frontend interaction is implemented using Streamlit. Below are screenshots o
 - `ai_agent.py`: Agent implementation, dynamic model adjustment implementation
 - `data_manager.py`: Data storage implementation
 
+### Experimental Results (Benchmark)
+
+| Approach | Description | Avg. Response Time on Test Set |
+|----------|-------------|---------------------------------|
+| **Ours** | Dynamic model selection by question complexity (chitchat / simple_rag → qwen_flash, complex_rag → qwen3_max) | **5.67s** |
+| **Baseline** | All queries use Qwen3_max Agent, no complexity classification | 7.95s |
+
+Average processing time per question is **29.5%** lower than the baseline.
+
 ### Datasets & Description
 
 - Original experimental data download: `https://gitee.com/EricLiuCN/barcode`
@@ -121,7 +130,7 @@ The frontend interaction is implemented using Streamlit. Below are screenshots o
 
 ## Supermarket_Agent
 
-这个项目的目标是在LangChain框架下实现一个基于LLM和RAG数据库的AIAgent系统。该系统可以与超市顾客进行智能互动，能够根据超市的商品信息、库存状况、折扣、位置和价格等数据，回答顾客问题，根据顾客的问题和需求推荐超市商品，提升顾客的便利性。
+这个项目的目标是在LangChain框架下实现一个基于LLM和RAG数据库的AIAgent系统。该系统可以与超市顾客进行智能互动，能够根据超市的商品信息、库存状况、折扣、位置和价格等数据，回答顾客问题，根据顾客的问题和需求推荐超市商品，提升顾客的便利性。本项目根据问题复杂度动态调整模型的方法，在测试数据上平均时间为 **5.67s**；对比实验组为 Agent 全部使用 Qwen3_max、且不对输入问题进行复杂度分类，在测试数据上平均时间为 **7.95s**。问题平均处理时间减少了 **29.5%**。
 
 一个基于 RAG 的超市智能助手，集「超市客服检索与推荐」「数据与向量库管理」于一体，支持快速部署使用。
 
@@ -184,6 +193,15 @@ The frontend interaction is implemented using Streamlit. Below are screenshots o
 - `app.py`：主应用入口、UI 界面
 - `ai_agent.py`：Agent 实现部分、动态模型调整实现部分
 - `data_manager.py`：数据存储实现部分
+
+### 实验测试
+
+| 方案 | 说明 | 测试集平均响应时间 |
+|------|------|---------------------|
+| **本方案** | 根据问题复杂度动态选择模型（chitchat / simple_rag → qwen_flash，complex_rag → qwen3_max） | **5.67s** |
+| **对比组** | Agent 全部使用 Qwen3_max，且不对输入问题进行复杂度分类 | 7.95s |
+
+问题平均处理时间相比对比组减少 **29.5%**。
 
 ### 数据集与说明
 
