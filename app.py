@@ -4,6 +4,7 @@ import os
 import shutil
 from dotenv import load_dotenv
 import matplotlib
+import time
 matplotlib.use('Agg')
 
 # 导入自定义模块
@@ -93,9 +94,16 @@ def main():
                 with st.chat_message("assistant"):
                     with st.spinner("🔍 正在查找..."):
                         # 直接调用持久化的 Agent
+                        begin_time = time.time()
                         res = ai.run_supermarket_agent(st.session_state.supermarket_agent, query)
-                        st.markdown(res)
-                        st.session_state.supermarket_messages.append({"role": "assistant", "content": res})
+                        end_time = time.time()
+                        st.markdown(f"⏱️ 耗时: {end_time - begin_time:.2f} 秒")
+                        st.markdown(res["content"])
+                        token_usage = res.get("token_usage")
+                        if token_usage:
+                            total_tokens = token_usage.get("total_tokens", "N/A")
+                            st.markdown(f"🔢 Token消耗: {total_tokens}")
+                        st.session_state.supermarket_messages.append({"role": "assistant", "content": res["content"]})
 
         with col2:
             st.markdown("### 🏪 商品数据管理")
