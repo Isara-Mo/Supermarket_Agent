@@ -127,9 +127,13 @@ def run_supermarket_agent(agent, user_question):
         print(f"[BERT推理] 预测标签: {pred}, 预测概率: {probs}")
         if pred == 0:
             response = ChatTongyi(model="qwen-flash").invoke(user_question)
-            return response.content
+            content = response.content
+            token_usage = response.response_metadata.get('token_usage', {})
         else:    
             response = agent.invoke({"messages": [("user", user_question)]})
-            return response["messages"][-1].content
+            last_msg = response["messages"][-1]
+            content = last_msg.content
+            token_usage = last_msg.response_metadata.get('token_usage', {})
+        return {"content": content, "token_usage": token_usage}
     except Exception as e:
-        return f"❌ 对话执行出错: {str(e)}"
+        return {"content": f"❌ 对话执行出错: {str(e)}", "token_usage": None}
