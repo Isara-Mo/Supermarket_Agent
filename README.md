@@ -118,6 +118,10 @@ Average processing time per question is **29.5%** lower than the baseline.
 - v1.1: Fixed query-reply anomalies caused by "Quick Query Buttons"
 - v1: Basic functionality implementation
 
+### Branch description
+
+- `test` branch: Display the time and the number of tokens consumed for this issue after each conversation, facilitating testing and performance evaluation.
+
 ### Acknowledgments (Co-worker)
 
 - 余子轩
@@ -235,6 +239,10 @@ Average processing time per question is **29.5%** lower than the baseline.
 - v1.1.1：特别版本，尝试本地 Embedding（正式版仍采用 DashScope 云端 Embedding）
 - v1.1：修复「快速询问按钮」导致的询问-回复异常
 - v1：基础功能实现
+
+### 分支说明
+
+- `test` 分支：在每次对话后显示此次问题的时间与消耗的token数量，便于测试和性能评估。
 
 ### 致谢（Co-worker）
 
