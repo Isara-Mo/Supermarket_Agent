@@ -85,6 +85,17 @@ The frontend interaction is implemented using Streamlit. Below are screenshots o
 
 Average processing time per question is **29.5%** lower than the baseline.
 
+### System Version / Platform Token Consumption 📊
+
+To monitor efficiency across system versions, we tracked the average token usage per request:
+
+| System Version / Platform | Avg. Tokens per Request |
+|--------------------------|-------------------------|
+| **Full‑chain Qwen-max** | 756.4 |
+| **Dynamic routing version** | 665.1 (≈12.1 % reduction) |
+
+The dynamic‑routing upgrade reduced token usage by around **12.1 %** meaning lower cost and faster processing for typical queries.
+
 ### Datasets & Description
 
 - Original experimental data download: `https://gitee.com/EricLiuCN/barcode`
@@ -206,6 +217,17 @@ Average processing time per question is **29.5%** lower than the baseline.
 | **对比组** | Agent 全部使用 Qwen3_max，且不对输入问题进行复杂度分类 | 7.95s |
 
 问题平均处理时间相比对比组减少 **29.5%**。
+
+### 系统版本/平台 Token 消耗 📊
+
+为了评估不同版本的效率，我们跟踪了每次请求的平均 Token 使用量：
+
+| 系统版本/平台 | 平均每次请求 Token |
+|--------------|-------------------|
+| **全链路 Qwen-max** | 756.4 |
+| **动态路由版本** | 665.1（约降低 12.1 %） |
+
+动态路由版本使得 Token 使用下降约 **12.1 %**，降低了成本并有助于加快响应速度。
 
 ### 数据集与说明
 
