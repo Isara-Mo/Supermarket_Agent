@@ -23,6 +23,16 @@ A RAG-based intelligent supermarket assistant that integrates "Supermarket Custo
    - **chitchat**: Only calls the `qwen_flash` model for replies
    - **simple_rag**: Uses an Agent with `qwen_flash` model to query the RAG knowledge base
    - **complex_rag**: Uses an Agent with `qwen3_max` model to query the RAG knowledge base
+
+   To select the most effective classifier, we evaluated several pre‑trained Chinese BERT models on the classification task. The comparison metrics below include model size, precision, F1‑score and test loss:
+
+   | Model Name | Weight (MB) | Precision | F1-Score | Test Loss |
+   |------------|-------------|-----------|----------|-----------|
+   | bert-base-chinese | 412 | 1.0000 | 1.0000 | 0.004 |
+   | chinese-bert-wwm-ext | 412 | 0.9970 | 0.9970 | 0.011 |
+   | chinese-roberta-wwm-ext | 412 | 0.9939 | 0.9939 | 0.014 |
+   | chinese-macbert-base | 412 | 0.9939 | 0.9939 | 0.012 |
+
 3. **Persistent Vector Database & File Management**: Performs hash-based deduplication on uploaded data, automatically builds vector databases for new data and saves them long-term; supports preview, deletion, and quick switching between multiple databases.
 
 ### Installation & Running
@@ -156,6 +166,16 @@ The dynamic‑routing upgrade reduced token usage by around **12.1 %** meaning
    - **chitchat**：仅调用 `qwen_flash` 模型进行回复
    - **simple_rag**：使用搭载 `qwen_flash` 模型的 Agent 自行查询 RAG 知识库回答
    - **complex_rag**：使用搭载 `qwen3_max` 模型的 Agent 自行查询 RAG 知识库回答
+
+   为了选择最优分类器，我们对多个中文 BERT 预训练模型进行了评估。下表列出了模型大小、精确率、F1 值和测试损失：
+
+   | 模型名称 | 权重 (MB) | 精确率 | F1-Score | 测试损失 |
+   |----------|-----------|--------|----------|----------|
+   | bert-base-chinese | 412 | 1.0000 | 1.0000 | 0.004 |
+   | chinese-bert-wwm-ext | 412 | 0.9970 | 0.9970 | 0.011 |
+   | chinese-roberta-wwm-ext | 412 | 0.9939 | 0.9939 | 0.014 |
+   | chinese-macbert-base | 412 | 0.9939 | 0.9939 | 0.012 |
+
 3. **持久化向量库与文件管理**：对上传数据进行哈希去重，新数据自动构建向量库并长期保存；支持预览、删除、快速切换多个数据库。
 
 ### 安装与运行
