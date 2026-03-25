@@ -86,14 +86,26 @@ The frontend interaction is implemented using Streamlit. Below are screenshots o
 - `ai_agent.py`: Agent implementation, dynamic model adjustment implementation
 - `data_manager.py`: Data storage implementation
 
-### Experimental Results (Benchmark)
+### System Version / Platform Response Time (s)
 
-| Approach | Description | Avg. Response Time on Test Set |
-|----------|-------------|---------------------------------|
-| **Ours** | Dynamic model selection by question complexity (chitchat / simple_rag → qwen_flash, complex_rag → qwen3_max) | **5.67s** |
-| **Baseline** | All queries use Qwen3_max Agent, no complexity classification | 7.95s |
+To compare efficiency across different deployments, we measured the average end-to-end response time on multiple platforms:
 
-Average processing time per question is **29.5%** lower than the baseline.
+| System Version / Platform | Avg. Response Time (s) |
+|---------------------------|--------------------------|
+| Full-chain Qwen-max (baseline) | 7.95 |
+| Dynamic routing (Jetson edge) | 6.18（speed up 22.3%） |
+| Dynamic routing (Local 4070Ti workstation) | 5.68（speed up 28.6%） |
+| Dynamic routing (Cloud server) | 6.09（speed up 23.4%） |
+
+### Text Classification Model Runtime Efficiency
+
+Text classification latency and throughput on each endpoint:
+
+| Endpoint | Avg. Latency per Item (s) | Throughput (QPS) |
+|-----------|-----------------------------|-------------------|
+| Cloud server | 0.172578 | 5.79 |
+| Jetson edge | 0.215794 | 4.63 |
+| Local 4070Ti workstation | 0.033315 | 30.02 |
 
 ### System Version / Platform Token Consumption 📊
 
@@ -229,14 +241,27 @@ The dynamic‑routing upgrade reduced token usage by around **12.1 %** meaning
 - `ai_agent.py`：Agent 实现部分、动态模型调整实现部分
 - `data_manager.py`：数据存储实现部分
 
-### 实验测试
 
-| 方案 | 说明 | 测试集平均响应时间 |
-|------|------|---------------------|
-| **本方案** | 根据问题复杂度动态选择模型（chitchat / simple_rag → qwen_flash，complex_rag → qwen3_max） | **5.67s** |
-| **对比组** | Agent 全部使用 Qwen3_max，且不对输入问题进行复杂度分类 | 7.95s |
+### 系统版本/平台 平均响应耗时（s）
 
-问题平均处理时间相比对比组减少 **29.5%**。
+为对比不同部署环境下的整体效率，我们统计了各平台上的平均端到端响应耗时：
+
+| 系统版本/平台 | 平均响应耗时(s) |
+|----------------|------------------|
+| 全链路 Qwen-max 版本（基线） | 7.95 |
+| 动态路由版本（Jetson 边缘端） | 6.18（速度提升22.3%） |
+| 动态路由版本（本地 4070Ti 工作站） | 5.68（速度提升28.6%） |
+| 动态路由版本（云端服务器） | 6.09（速度提升23.4%） |
+
+### 文本分类模型在各端的运行效率
+
+文本分类模型在各端点的平均耗时与吞吐量如下：
+
+| 端点/平台 | 平均每条耗时(s) | 吞吐量(QPS) |
+|----------|------------------|-------------|
+| 云端服务器 | 0.172578 | 5.79 |
+| Jetson 边缘端 | 0.215794 | 4.63 |
+| 本地 4070Ti 工作站 | 0.033315 | 30.02 |
 
 ### 系统版本/平台 Token 消耗 📊
 
